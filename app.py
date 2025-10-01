@@ -25,12 +25,6 @@ def is_pure_color(img, std_threshold=15, unique_threshold=0.02):
     return (stddev < std_threshold) and (ratio_unique < unique_threshold)
 
 
-def is_blurry(img, threshold=100.0):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-    return lap_var < threshold
-
-
 def has_object(img, edge_threshold=50):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 100, 200)
@@ -39,12 +33,10 @@ def has_object(img, edge_threshold=50):
 
 
 def classify_image(img):
-    if is_pure_color(img):
-        return "Pure color (or mostly uniform with gradient)"
-    elif is_blurry(img):
-        return "Blurry"
-    elif has_object(img):
+    if has_object(img):
         return "Has object"
+    elif is_pure_color(img):
+        return "Pure color (or mostly uniform with gradient)"
     else:
         return "Uncertain"
 
@@ -64,7 +56,7 @@ def load_image_from_url(url):
 st.set_page_config(page_title="Image Classifier", page_icon="🖼️")
 
 st.title("🖼️ Lightweight Image Classifier")
-st.write("Classify an image as **Pure Color**, **Blurry**, or **Has Object**.")
+st.write("Classify an image as **Pure Color** or **Has Object**.")
 
 # File upload
 uploaded_file = st.file_uploader("Upload an image", type=["jpg","jpeg","png"])
@@ -98,12 +90,10 @@ if image is not None:
         unique_colors = len(np.unique(quantized, axis=0))
         ratio_unique = unique_colors / len(pixels)
 
-        lap_var = cv2.Laplacian(cv2.cvtColor(img_cv2, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var()
         edge_pixels = np.sum(cv2.Canny(cv2.cvtColor(img_cv2, cv2.COLOR_BGR2GRAY), 100, 200) > 0)
 
         st.write("Standard Deviation:", stddev)
         st.write("Unique Color Ratio:", ratio_unique)
-        st.write("Laplacian Variance:", lap_var)
         st.write("Edge Pixels:", edge_pixels)
 
 st.markdown("---")
