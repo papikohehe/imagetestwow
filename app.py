@@ -3,6 +3,8 @@ import streamlit as st
 import cv2
 import numpy as np
 from PIL import Image
+import requests
+from io import BytesIO
 
 # -----------------------------
 # Utility Functions
@@ -11,15 +13,11 @@ from PIL import Image
 def is_pure_color(img, std_threshold=15, unique_threshold=0.02):
     """
     Check if image is mostly one color (allowing small gradient or noise).
-    - std_threshold: lower = stricter, higher = allow small gradients
-    - unique_threshold: ratio of unique colors to total pixels
     """
     pixels = img.reshape(-1, img.shape[-1])
-
-    # Standard deviation across channels
     stddev = np.std(pixels)
 
-    # Count unique colors (quantized to reduce sensitivity to tiny changes)
+    # Quantize colors to reduce sensitivity
     quantized = (pixels // 16).astype(np.uint8)
     unique_colors = len(np.unique(quantized, axis=0))
     ratio_unique = unique_colors / len(pixels)
@@ -50,6 +48,16 @@ def classify_image(img):
     else:
         return "Uncertain"
 
+
+def load_image_from_url(url):
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        return Image.open(BytesIO(response.content)).convert("RGB")
+    except Exception as e:
+        st.error(f"❌ Could not load image from URL: {e}")
+        return None
+
 # -----------------------------
 # Streamlit App
 # -----------------------------
@@ -58,12 +66,21 @@ st.set_page_config(page_title="Image Classifier", page_icon="🖼️")
 st.title("🖼️ Lightweight Image Classifier")
 st.write("Classify an image as **Pure Color**, **Blurry**, or **Has Object**.")
 
+# File upload
 uploaded_file = st.file_uploader("Upload an image", type=["jpg","jpeg","png"])
 
+# URL input
+image_url = st.text_input("Or enter an image URL")
+
+# Process Image
+image = None
 if uploaded_file is not None:
-    # Load and display image
     image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+elif image_url:
+    image = load_image_from_url(image_url)
+
+if image is not None:
+    st.image(image, caption="Input Image", use_column_width=True)
 
     # Convert to OpenCV format
     img_array = np.array(image)
